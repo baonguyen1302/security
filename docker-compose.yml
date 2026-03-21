@@ -6,20 +6,34 @@ services:
       - "8080:80"
     volumes:
       - ./app:/var/www/html
-    depends_on:
-      - db
+    networks:
+      - sqli_net
 
   db:
     image: mysql:5.7
     container_name: sqli_db
-    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: sqli_demo
-    ports:
-      - "3306:3306"
     volumes:
       - ./init:/docker-entrypoint-initdb.d
+    networks:
+      - sqli_net
+
+  waf:
+    image: owasp/modsecurity-crs:nginx
+    container_name: sqli_waf
+    ports:
+      - "8090:8080"
+    environment:
+      UPSTREAM: "http://web:80"
+      BACKEND: "http://web:80"
+    depends_on:
+      - web
+    networks:
+      - sqli_net
+    volumes:
+      - ./waf/rules:/etc/modsecurity/rules:ro
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
@@ -31,6 +45,10 @@ services:
       PMA_HOST: db
       PMA_USER: root
       PMA_PASSWORD: root
-      MYSQL_ROOT_PASSWORD: root
     depends_on:
       - db
+    networks:
+      - sqli_net
+
+networks:
+  sqli_net:

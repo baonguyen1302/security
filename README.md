@@ -64,7 +64,17 @@ The MySQL image will automatically run SQL files found in `init/` on first initi
 Stop and remove containers and volumes (useful to reset DB state):
 
 ```bash
+docker compose down -v# Start the stack (Compose v2)
+docker compose up -d
+
+# Check services
+docker compose ps
+
+# Stop and remove containers + volumes (resets DB)
 docker compose down -v
+
+# Tail web logs
+docker compose logs -f web
 ```
 
 Tail logs (example for the PHP web container):
@@ -78,6 +88,36 @@ docker compose logs -f web
 1. Start the stack with `docker compose up -d`.
 2. Visit http://localhost:8081 and log into phpMyAdmin using `root`/`root` to confirm the `sqli_demo` database exists and that any tables from `init/init.sql` were created.
 3. Visit http://localhost:8080 to reach the vulnerable PHP pages (for educational testing only).
+
+## Scenarios
+
+The repository includes three learning scenarios demonstrating different SQL injection techniques. Two of them are described below with quick test steps.
+
+### Scenario 1 — Login bypass (SQL Injection)
+
+- Location: `app/Scenario1/login.php`
+- What it demonstrates: A classic login bypass where untrusted input is concatenated into a SQL query. An attacker can submit a payload such as `' OR '1'='1` in the username field to make the WHERE clause always true and bypass authentication.
+- Quick test:
+	1. Open: `http://localhost:8080/Scenario1/login.php`
+	2. In the vulnerable form enter ` ' OR '1'='1 ` as the Username and leave the password blank. You should see a successful login in vulnerable mode.
+	3. Try the Secure mode on the same page (prepared statements) — the same payload should not bypass authentication.
+- Notes: If the `users` table is missing, create it via phpMyAdmin or with SQL (see `init/init.sql` or the Scenario1 README inside `app/Scenario1/`).
+
+### Scenario 2 — UNION-based SQL Injection (Product listing)
+
+- Location: `app/Scenario2/product.php`
+- What it demonstrates: UNION-based SQLi where an attacker appends a `UNION SELECT` to cause rows from another table (for example `users`) to be returned and displayed as product rows.
+- Quick test:
+	1. Ensure `products` and `users` tables exist (see `init/init.sql` — the provided `init` creates demo tables).
+	2. Open a URL similar to the example (URL-encoded):
+
+```
+http://localhost:8080/Scenario2/product.php?product_id=-1%20UNION%20SELECT%201,username,password%20FROM%20users--
+```
+
+	3. If the UNION succeeds, the page will display `users` rows as if they were products (usernames and passwords will appear in the output).
+- Defense: Use prepared statements, validate/cast numeric IDs (e.g., `intval()`), and restrict database privileges for the web app user.
+
 
 ## Troubleshooting
 
@@ -170,6 +210,35 @@ docker compose up -d
 1. Khởi động với `docker compose up -d`.
 2. Mở phpMyAdmin trên http://localhost:8081 và đăng nhập `root`/`root` để kiểm tra `sqli_demo`.
 3. Mở http://localhost:8080 để thử các trang PHP (chỉ phục vụ mục đích học tập).
+
+### Kịch bản
+
+Kho chứa gồm nhiều kịch bản học tập về SQL injection. Dưới đây là hai kịch bản chính và cách kiểm thử nhanh.
+
+#### Kịch bản 1 — Bypass đăng nhập (SQL Injection)
+
+- Đường dẫn: `app/Scenario1/login.php`
+- Mô tả: Minh họa bypass đăng nhập khi đầu vào người dùng được ghép trực tiếp vào câu SQL. Payload ` ' OR '1'='1 ` có thể làm điều kiện WHERE luôn đúng và bỏ qua xác thực.
+- Thử nhanh:
+	1. Mở: `http://localhost:8080/Scenario1/login.php`
+	2. Ở form Vulnerable nhập ` ' OR '1'='1 ` vào Username, để password trống. Bạn sẽ thấy thông báo đăng nhập thành công ở chế độ vulnerable.
+	3. Chuyển sang chế độ Secure trên cùng trang (prepared statements) — payload tương tự sẽ không bỏ qua xác thực.
+
+#### Kịch bản 2 — UNION-based SQL Injection (Danh sách sản phẩm)
+
+- Đường dẫn: `app/Scenario2/product.php`
+- Mô tả: Minh họa UNION-based SQLi; kẻ tấn công nối thêm `UNION SELECT` để trả về dữ liệu từ bảng khác (ví dụ `users`) và trang hiển thị chúng như product rows.
+- Thử nhanh:
+	1. Đảm bảo bảng `products` và `users` tồn tại (xem `init/init.sql`).
+	2. Dùng URL (URL-encoded):
+
+```
+http://localhost:8080/Scenario2/product.php?product_id=-1%20UNION%20SELECT%201,username,password%20FROM%20users--
+```
+
+	3. Nếu thành công, trang sẽ hiển thị dữ liệu `users` như product rows (lộ username và password).
+- Phòng thủ: Dùng prepared statements, ép kiểu số nguyên cho `product_id` (ví dụ `intval()`), và giới hạn quyền truy cập DB cho tài khoản web.
+
 
 Vấn đề thường gặp:
 
