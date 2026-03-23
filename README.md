@@ -41,219 +41,120 @@ Prerequisites:
 Start the stack in detached mode:
 
 ```bash
-# Using Docker Compose v2 (recommended)
-docker compose up -d
+# security
 
-# Or, if your system uses the older docker-compose binary:
-docker-compose up -d
-```
+This repository is a small, local lab for learning SQL injection (SQLi) and mitigation techniques. It contains intentionally vulnerable PHP examples (three scenarios), a Docker Compose stack that runs the web app + MySQL + phpMyAdmin, and a ModSecurity WAF container with example rules for defenses.
 
-Verify services are running:
+Quick overview
+- Purpose: teach SQLi attack techniques (union-based, blind/time-based, login bypass) and basic defenses (prepared statements, WAF rules, rate-limiting).
+- Not for production. Run only in an isolated lab environment.
 
-```bash
-docker compose ps
-```
+Repository structure
 
-Open the web app in your browser:
+Top-level files and folders:
 
-- Web app: http://localhost:8080
+- `Dockerfile`          - PHP/Apache image build steps.
+- `docker-compose.yml`  - Compose orchestration (web, db, waf, phpmyadmin).
+- `init/`               - `init.sql` with example database + sample data (runs on first MySQL startup).
+- `app/`                - PHP application and scenarios.
+- `waf/`                - Custom ModSecurity rules and WAF helper files.
+- `scripts/`            - Small helper scripts (WAF tester, blind extractor).
+- `README.md`           - This file.
+
+`app/` layout:
+
+- `app/config.php`      - DB connection used by PHP pages.
+- `app/Scenario1/login.php`    - Scenario 1: Login bypass (SQLi) demo and secure prepared-statement example.
+- `app/Scenario2/product.php`  - Scenario 2: Product listing, union-based SQLi demonstration and secure branch.
+- `app/Scenario3/profile.php`  - Scenario 3: Blind (time-based) SQLi demo + safe simulation API and secure branch.
+
+WAF and rules
+- `waf/rules/10-sqlmap.conf` - Custom ModSecurity rules (detect sqlmap UA/payloads, per-IP counters, deny rules).
+- `waf/conf.d/limit.conf`    - nginx rate-limiting configuration (applies request throttling at the proxy).
+
+Useful scripts
+- `scripts/test_waf.sh`       - Sends repeated sqlmap-like requests to demonstrate the WAF blocking behavior.
+- `scripts/blind_extractor.py`- Safe demo extractor that uses `profile.php?simulate=1&probe=...` to practice blind/time-based extraction without creating a real SQLi hole.
+
+Ports and credentials
+
+- Web app (PHP/Apache): http://localhost:8080
+- WAF proxy (ModSecurity/CRS): http://localhost:8090 (proxy to web)
 - phpMyAdmin: http://localhost:8081 (user: `root`, password: `root`)
+- MySQL (inside container): root / root, default DB `sqli_demo` (the `init/init.sql` creates tables and sample rows)
 
-The MySQL image will automatically run SQL files found in `init/` on first initialization. If you need to re-run the init scripts, remove the MySQL volume (see `docker compose down -v` below) and start the stack again.
+How to run (quick)
 
-Stop and remove containers and volumes (useful to reset DB state):
+Prerequisites: Docker and Docker Compose available on the host.
 
-```bash
-docker compose down -v# Start the stack (Compose v2)
-docker compose up -d
-
-# Check services
-docker compose ps
-
-# Stop and remove containers + volumes (resets DB)
-docker compose down -v
-
-# Tail web logs
-docker compose logs -f web
-```
-
-Tail logs (example for the PHP web container):
-
-```bash
-docker compose logs -f web
-```
-
-## Verifying the setup
-
-1. Start the stack with `docker compose up -d`.
-2. Visit http://localhost:8081 and log into phpMyAdmin using `root`/`root` to confirm the `sqli_demo` database exists and that any tables from `init/init.sql` were created.
-3. Visit http://localhost:8080 to reach the vulnerable PHP pages (for educational testing only).
-
-## Scenarios
-
-The repository includes three learning scenarios demonstrating different SQL injection techniques. Two of them are described below with quick test steps.
-
-### Scenario 1 — Login bypass (SQL Injection)
-
-- Location: `app/Scenario1/login.php`
-- What it demonstrates: A classic login bypass where untrusted input is concatenated into a SQL query. An attacker can submit a payload such as `' OR '1'='1` in the username field to make the WHERE clause always true and bypass authentication.
-- Quick test:
-	1. Open: `http://localhost:8080/Scenario1/login.php`
-	2. In the vulnerable form enter ` ' OR '1'='1 ` as the Username and leave the password blank. You should see a successful login in vulnerable mode.
-	3. Try the Secure mode on the same page (prepared statements) — the same payload should not bypass authentication.
-- Notes: If the `users` table is missing, create it via phpMyAdmin or with SQL (see `init/init.sql` or the Scenario1 README inside `app/Scenario1/`).
-
-### Scenario 2 — UNION-based SQL Injection (Product listing)
-
-- Location: `app/Scenario2/product.php`
-- What it demonstrates: UNION-based SQLi where an attacker appends a `UNION SELECT` to cause rows from another table (for example `users`) to be returned and displayed as product rows.
-- Quick test:
-	1. Ensure `products` and `users` tables exist (see `init/init.sql` — the provided `init` creates demo tables).
-	2. Open a URL similar to the example (URL-encoded):
-
-```
-http://localhost:8080/Scenario2/product.php?product_id=-1%20UNION%20SELECT%201,username,password%20FROM%20users--
-```
-
-	3. If the UNION succeeds, the page will display `users` rows as if they were products (usernames and passwords will appear in the output).
-- Defense: Use prepared statements, validate/cast numeric IDs (e.g., `intval()`), and restrict database privileges for the web app user.
-
-
-## Troubleshooting
-
-- Port collisions: If ports 8080, 8081 or 3306 are already in use, stop the conflicting service or edit `docker-compose.yml` to change host ports.
-- Permission issues with mounting `app/`: On some systems SELinux or Docker permission rules may prevent Apache from reading mounted files. Check container logs and adjust mount options or permissions.
-- If the database looks empty after startup, you may need to remove the MySQL volume and restart so the init scripts run: `docker compose down -v` then `docker compose up -d`.
-
-## Security notice
-
-This repository contains intentionally insecure code for learning about SQL injection and related vulnerabilities. Do NOT run this exposed to the public internet. Only run locally in an isolated environment.
-
-## Next steps / Suggestions
-
-- Add a `README` inside each `Scenario*/` folder that explains what vulnerability or lesson that scenario demonstrates.
-- Add a `.env.example` if you plan to parameterize credentials or ports.
-
-If you'd like, I can also:
-
-- Add small README files inside each `app/Scenario*` explaining what to test.
-- Add a short script to wait for DB readiness before running tests.
-
--- End of file
-
-## Tiếng Việt (Vietnamese)
-
-Một kho chứa nhỏ với các ví dụ PHP có lỗ hổng (các kịch bản SQL injection) và cấu hình Docker Compose để chạy cục bộ phục vụ mục đích học tập và thực hành.
-
-### Cấu trúc repository
-
-Các file và thư mục cấp cao:
-
-- `docker-compose.yml`  - Stack: `web` (PHP/Apache), `db` (MySQL 5.7), `phpmyadmin`.
-- `README.md`          - File này.
-- `init/`              - Các script SQL được đưa vào container MySQL (`init.sql`).
-- `app/`               - Mã ứng dụng PHP và các thư mục kịch bản.
-
-Trong `app/`:
-
-- `Scenario1/`, `Scenario 2/`, `Scenario 3/` - các kịch bản dễ bị tổn thương để học về SQL injection.
-- `login.php` - ví dụ trang đăng nhập.
-
-Lưu ý: Một số tên thư mục có khoảng trắng (ví dụ `Scenario 2/`) — giữ nguyên như cấu trúc gốc.
-
-### Những gì Docker Compose cung cấp
-
-- `web`: PHP 8.2 + Apache, ánh xạ port host 8080 -> container 80. Thư mục `app/` được mount vào `/var/www/html`.
-- `db`: MySQL 5.7, ánh xạ port host 3306 -> container 3306. Các file trong `init/` sẽ được chạy khi container khởi tạo lần đầu. Cơ sở dữ liệu mặc định: `sqli_demo`.
-- `phpmyadmin`: giao diện quản trị MySQL trên port host 8081.
-
-Thông tin đăng nhập mặc định (theo `docker-compose.yml`):
-
-- Người dùng root: `root`
-- Mật khẩu root: `root`
-- Database: `sqli_demo`
-
-### Cách chạy (tóm tắt)
-
-Yêu cầu trước:
-
-- Cài Docker và Docker Compose. Trên nhiều hệ Linux lệnh là `docker` và `docker compose`. Nếu bạn dùng cũ hơn, dùng `docker-compose`.
-
-Khởi động stack dưới nền:
+Start the stack:
 
 ```bash
 docker compose up -d
-# hoặc
-docker-compose up -d
 ```
 
-Kiểm tra trạng thái:
+Check services:
 
 ```bash
 docker compose ps
 ```
 
-Truy cập:
-
-- Ứng dụng web: http://localhost:8080
-- phpMyAdmin: http://localhost:8081 (user: `root`, pass: `root`)
-
-Để đặt lại trạng thái DB và chạy lại các script init, dừng stack và xóa volume MySQL rồi khởi động lại:
+Reset DB (reread `init/`):
 
 ```bash
 docker compose down -v
 docker compose up -d
 ```
 
-### Kiểm tra và khắc phục
+Access the app and tools in your browser:
 
-1. Khởi động với `docker compose up -d`.
-2. Mở phpMyAdmin trên http://localhost:8081 và đăng nhập `root`/`root` để kiểm tra `sqli_demo`.
-3. Mở http://localhost:8080 để thử các trang PHP (chỉ phục vụ mục đích học tập).
+- App (direct): http://localhost:8080
+- App (through WAF): http://localhost:8090
+- phpMyAdmin: http://localhost:8081
 
-### Kịch bản
+Scenario summaries and how to exercise them
 
-Kho chứa gồm nhiều kịch bản học tập về SQL injection. Dưới đây là hai kịch bản chính và cách kiểm thử nhanh.
+- Scenario 1 — Login bypass (SQLi)
+	- File: `app/Scenario1/login.php`.
+	- Vulnerable form (concatenated SQL) demonstrates classic login bypass; the page also includes a secure prepared-statement example to compare behavior.
+	- Test payload (vulnerable form): `username: ' OR '1'='1` (leave password blank).
 
-#### Kịch bản 1 — Bypass đăng nhập (SQL Injection)
+- Scenario 2 — UNION-based SQLi
+	- File: `app/Scenario2/product.php`.
+	- Vulnerable branch injects `product_id` directly into SQL; example payload:
+		`?product_id=-1 UNION SELECT 1,username,password FROM users--`
+	- The scenario also includes a secure/parameterized branch to compare results.
 
-- Đường dẫn: `app/Scenario1/login.php`
-- Mô tả: Minh họa bypass đăng nhập khi đầu vào người dùng được ghép trực tiếp vào câu SQL. Payload ` ' OR '1'='1 ` có thể làm điều kiện WHERE luôn đúng và bỏ qua xác thực.
-- Thử nhanh:
-	1. Mở: `http://localhost:8080/Scenario1/login.php`
-	2. Ở form Vulnerable nhập ` ' OR '1'='1 ` vào Username, để password trống. Bạn sẽ thấy thông báo đăng nhập thành công ở chế độ vulnerable.
-	3. Chuyển sang chế độ Secure trên cùng trang (prepared statements) — payload tương tự sẽ không bỏ qua xác thực.
+- Scenario 3 — Blind (time-based) SQLi and WAF
+	- File: `app/Scenario3/profile.php`.
+	- For safe classroom practice this repo provides a server-side simulation API (no real attacker-supplied SQL execution):
+		- `?simulate=1&probe=table|column|id|pos|ascii` — the server uses prepared statements to check the probe and sleeps 5s if true (OK), otherwise returns NO.
+		- Example: `?simulate=1&probe=users|password|1|1|97` checks if the first char of `users.password` for id=1 is ASCII 97.
+	- Use `scripts/blind_extractor.py` to automate timed probes and reconstruct values for lab demos.
 
-#### Kịch bản 2 — UNION-based SQL Injection (Danh sách sản phẩm)
+WAF behavior and testing
 
-- Đường dẫn: `app/Scenario2/product.php`
-- Mô tả: Minh họa UNION-based SQLi; kẻ tấn công nối thêm `UNION SELECT` để trả về dữ liệu từ bảng khác (ví dụ `users`) và trang hiển thị chúng như product rows.
-- Thử nhanh:
-	1. Đảm bảo bảng `products` và `users` tồn tại (xem `init/init.sql`).
-	2. Dùng URL (URL-encoded):
+- The repository includes a WAF container (`waf`) running OWASP ModSecurity CRS with custom rules in `waf/rules/`.
+- Rules detect sqlmap-like User-Agent and SQLi payload patterns and block or rate-limit suspicious clients. Use `scripts/test_waf.sh` to simulate scanning and observe 403/429 responses.
 
-```
-http://localhost:8080/Scenario2/product.php?product_id=-1%20UNION%20SELECT%201,username,password%20FROM%20users--
-```
+Security notes
 
-	3. Nếu thành công, trang sẽ hiển thị dữ liệu `users` như product rows (lộ username và password).
-- Phòng thủ: Dùng prepared statements, ép kiểu số nguyên cho `product_id` (ví dụ `intval()`), và giới hạn quyền truy cập DB cho tài khoản web.
+- All scenarios are intentionally insecure for learning. Never run this stack on a public network. Use an isolated lab or VM.
+- The `simulate` API is a safe learning helper and does not execute attacker-supplied SQL; it only reads server-side data using prepared statements and intentionally delays responses to mimic time-based blind SQLi.
 
+Troubleshooting & tips
 
-Vấn đề thường gặp:
+- If services don't start: run `docker compose logs <service>` to see errors (for example `docker compose logs sqli_waf`).
+- If the DB looks empty after starting, remove volumes and restart: `docker compose down -v` then `docker compose up -d`.
+- Tune WAF thresholds in `waf/rules/10-sqlmap.conf` and `waf/conf.d/limit.conf` to match your lab needs.
 
-- Trùng port: nếu 8080/8081/3306 đã sử dụng, tắt dịch vụ đó hoặc sửa `docker-compose.yml` để đổi port.
-- Quyền truy cập file khi mount `app/`: một số hệ có SELinux hoặc quyền file gây lỗi. Kiểm tra log container.
-- Nếu DB rỗng sau khi khởi động, xóa volume MySQL rồi khởi động lại để init scripts chạy.
+Want me to do more?
 
-### Lưu ý bảo mật
+- I can add per-scenario READMEs inside each `app/Scenario*` with step-by-step exercises and expected results.
+- I can add an `init` change to seed more test accounts or secrets, or add faster extractor algorithms (binary search) to make the blind extractor finish faster in demos.
 
-Kho này chứa mã có lỗ hổng cố ý để học SQL injection. Không để chạy trên mạng công cộng.
+---
 
-### Bước tiếp theo (đề xuất)
+If you want, I can now write per-scenario step-by-step lab guides into each `app/Scenario*/README.md` — tell me which scenario to start with.
 
-- Thêm `README` cho từng `app/Scenario*` giải thích bài học của mỗi kịch bản.
-- Thêm `.env.example` nếu muốn cấu hình biến môi trường (port, mật khẩu).
-
--- Phần kết
 
