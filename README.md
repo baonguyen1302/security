@@ -94,7 +94,9 @@ Open in a browser:
   - Simulation probe pattern: `/Scenario3/profile.php?simulate=1&probe=table|column|id|pos|ascii`
   - Example: `/Scenario3/profile.php?simulate=1&probe=users|password|1|1|97` — server sleeps if first char of `users.password` for id=1 is ASCII 97.
   - Use `scripts/blind_extractor.py` to practice timed probes safely.
-
+  - Example: 
+    + Attack:  sqlmap -u "http://localhost:8080/Scenario3/profile.php?user_id=1" --dump
+    + Defense: sqlmap -u "http://localhost:8090/Scenario3/profile.php?user_id=1" --dump
 ## Testing the WAF
 
 - `scripts/test_waf.sh` sends sqlmap-like requests (User-Agent: sqlmap) to demonstrate detection and blocking.
@@ -171,14 +173,14 @@ docker compose down -v
 - Kịch bản 3 — Blind (time-based) — mô phỏng an toàn
   - Tệp: `app/Scenario3/profile.php`
   - API mô phỏng: `?simulate=1&probe=table|column|id|pos|ascii`
+  - Example: 
+    + Attack:  sqlmap -u "http://localhost:8080/Scenario3/profile.php?user_id=1" --dump
+    + Defense: sqlmap -u "http://localhost:8090/Scenario3/profile.php?user_id=1" --dump
 
 ## Ghi chú bảo mật
 
 - Các ví dụ này có mục đích học tập. Không chạy trên mạng công cộng.
 
 ---
-
-
-If you want, I can now write per-scenario step-by-step lab guides into each `app/Scenario*/README.md` — tell me which scenario to start with.
 
 
