@@ -2,10 +2,11 @@
 // Scenario 1 - Login bypass (SQLi) demo + prepared-statement defense
 // Uses ../config.php for DB connection ($conn)
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../mode_store.php';
 
 function h($s) { return htmlspecialchars($s ?? '', ENT_QUOTES, 'UTF-8'); }
 
-$mode = $_POST['mode'] ?? '';
+$mode = get_mode();
 $username = $_POST['username'] ?? '';
 $password = $_POST['password'] ?? '';
 
@@ -26,10 +27,6 @@ $password = $_POST['password'] ?? '';
 
     <div class="card">
       <form method="post" id="loginForm">
-        <div class="mode-toggle">
-          <label><input type="radio" name="mode" value="vulnerable" checked> Vulnerable</label>
-          <label><input type="radio" name="mode" value="secure"> Secure (Prepared)</label>
-        </div>
 
         <div class="form-row">
           <label>Username
@@ -44,34 +41,12 @@ $password = $_POST['password'] ?? '';
         </div>
 
         <div class="form-row">
-          <button id="submitBtn" type="submit">Login (Vulnerable)</button>
+          <button id="submitBtn" type="submit">Login</button>
         </div>
 
-        <div class="hint" id="modeHint">Currently showing the <strong>Vulnerable</strong> login. Use this to demo SQL injection (do not use in production).</div>
+        <div class="hint" id="modeHint">Current site mode: <strong><?php echo h($mode); ?></strong>. Manage global mode at <a href="/app/mode.php">Mode Control</a>.</div>
       </form>
     </div>
-
-    <script>
-      (function(){
-        const radios = document.querySelectorAll('input[name="mode"]');
-        const btn = document.getElementById('submitBtn');
-        const hint = document.getElementById('modeHint');
-        function update(){
-          const mode = document.querySelector('input[name="mode"]:checked').value;
-          if(mode === 'vulnerable'){
-            btn.textContent = 'Login (Vulnerable)';
-            btn.classList.remove('secure');
-            hint.innerHTML = 'Currently showing the <strong>Vulnerable</strong> login. Try payload <code>\' OR \'1\'=\'1</code> in Username.';
-          } else {
-            btn.textContent = 'Login (Secure - Prepared Statement)';
-            btn.classList.add('secure');
-            hint.innerHTML = 'Secure mode uses prepared statements. This prevents SQL injection.';
-          }
-        }
-        radios.forEach(r=>r.addEventListener('change', update));
-        update();
-      })();
-    </script>
 
     <div class="info-box">
       <h3 class="section-title">Example SQLi Payload</h3>

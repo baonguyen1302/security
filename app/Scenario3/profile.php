@@ -4,14 +4,15 @@
 // WARNING: intentionally vulnerable for learning. Do NOT expose publicly.
 
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../mode_store.php';
 
 function h($s) { return htmlspecialchars($s ?? '', ENT_QUOTES, 'UTF-8'); }
 
 $id_raw = $_GET['user_id'] ?? '';
-$mode = $_GET['mode'] ?? 'vulnerable';
+$mode = get_mode();
 
 echo "<h1>Scenario 3 — Blind SQLi (time-based) demo</h1>";
-echo "<p>Mode: <strong>" . h($mode) . "</strong></p>";
+echo "<p>Mode: <strong>" . h($mode) . "</strong>. Manage global mode at <a href=\"/app/mode.php\">Mode Control</a></p>";
 
 if ($mode === 'vulnerable') {
     // VULNERABLE: directly use GET param in SQL — allows time-based blind SQLi

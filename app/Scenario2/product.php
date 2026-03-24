@@ -1,9 +1,10 @@
 <?php
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../mode_store.php';
 
 function h($s) { return htmlspecialchars($s ?? '', ENT_QUOTES, 'UTF-8'); }
 
-$mode = $_GET['mode'] ?? 'vulnerable';
+$mode = get_mode();
 $id_raw = $_GET['product_id'] ?? '';
 
 ?>
@@ -33,10 +34,8 @@ $id_raw = $_GET['product_id'] ?? '';
         </div>
 
         <div class="form-row">
-          <div class="mode-toggle">
-            <label><input type="radio" name="mode" value="vulnerable" <?php echo $mode === 'vulnerable' ? 'checked' : ''; ?>> Vulnerable</label>
-            <label><input type="radio" name="mode" value="secure" <?php echo $mode === 'secure' ? 'checked' : ''; ?>> Secure (Prepared)</label>
-          </div>
+          <!-- mode is controlled globally via /app/mode.php cookie -->
+          <div class="small">Current site mode: <strong><?php echo h($mode); ?></strong>. Manage at <a href="/app/mode.php">Mode Control</a></div>
         </div>
 
         <div class="form-row">
@@ -44,7 +43,11 @@ $id_raw = $_GET['product_id'] ?? '';
         </div>
 
         <div class="hint" id="modeHint">
-          Currently in <strong>Vulnerable</strong> mode. Try payload: <code>-1 UNION SELECT 1,username,password FROM users--</code>
+          <?php if ($mode === 'vulnerable') { ?>
+            Currently in <strong>Vulnerable</strong> mode. Try payload: <code>-1 UNION SELECT 1,username,password FROM users--</code>
+          <?php } else { ?>
+            Secure mode uses prepared statements with integer validation. SQL injection is prevented.
+          <?php } ?>
         </div>
       </form>
     </div>
@@ -56,22 +59,7 @@ $id_raw = $_GET['product_id'] ?? '';
       <pre>-1 UNION SELECT 1,username,password FROM users--</pre>
     </div>
 
-    <script>
-      (function(){
-        const radios = document.querySelectorAll('input[name="mode"]');
-        const hint = document.getElementById('modeHint');
-        function update(){
-          const mode = document.querySelector('input[name="mode"]:checked').value;
-          if(mode === 'vulnerable'){
-            hint.innerHTML = 'Currently in <strong>Vulnerable</strong> mode. Try payload: <code>-1 UNION SELECT 1,username,password FROM users--</code>';
-          } else {
-            hint.innerHTML = 'Secure mode uses prepared statements with integer validation. SQL injection is prevented.';
-          }
-        }
-        radios.forEach(r=>r.addEventListener('change', update));
-        update();
-      })();
-    </script>
+    <!-- Hint rendered server-side based on global mode cookie -->
 
 <?php
 
