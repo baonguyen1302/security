@@ -15,24 +15,14 @@ $password = $_POST['password'] ?? '';
   <head>
     <meta charset="utf-8">
     <title>Scenario1 — Login SQLi demo</title>
-    <style>body{font-family:Arial,Helvetica,sans-serif;max-width:820px;margin:18px;} form{margin-bottom:14px;} code{background:#f6f6f6;padding:2px 6px;border-radius:4px;}</style>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="stylesheet" href="style.css">
   </head>
-  <body>
-    <h1>Scenario 1 — Login bypass (SQL Injection)</h1>
-    <p>Use the <strong>Vulnerable</strong> form to demonstrate how concatenated SQL can be bypassed. Use the <strong>Secure</strong> form to see the prepared-statement defense.</p>
-
-    <style>
-      .card{background:#fff;border:1px solid #e6e6e6;padding:18px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.04);}
-      .form-row{margin:8px 0}
-      label{display:block;margin-bottom:6px}
-      input[type="text"], input[type="password"]{width:100%;padding:8px;border:1px solid #ccc;border-radius:6px}
-      .mode-toggle{display:flex;gap:8px;margin:6px 0 12px 0}
-      .mode-toggle label{display:inline-flex;align-items:center;gap:6px;background:#f4f6f8;padding:6px 10px;border-radius:6px;cursor:pointer}
-      .mode-toggle input{margin:0}
-      #submitBtn{background:#0078d4;color:#fff;border:none;padding:10px 14px;border-radius:6px;cursor:pointer}
-      #submitBtn.secure{background:#2d7a46}
-      .hint{font-size:13px;color:#555;margin-top:8px}
-    </style>
+  <body class="page">
+    <header class="site-header">
+      <h1>Scenario 1 — Login bypass (SQL Injection)</h1>
+      <p class="lead">Use the <strong>Vulnerable</strong> form to demonstrate how concatenated SQL can be bypassed. Use the <strong>Secure</strong> form to see the prepared-statement defense.</p>
+    </header>
 
     <div class="card">
       <form method="post" id="loginForm">
@@ -83,9 +73,11 @@ $password = $_POST['password'] ?? '';
       })();
     </script>
 
-    <h3>Example SQLi payload</h3>
-    <p>Try entering this into the <strong>Username</strong> and <strong>Password</strong> fields of the Vulnerable form:</p>
-    <pre>' OR '1'='1</pre>
+    <div class="info-box">
+      <h3 class="section-title">Example SQLi Payload</h3>
+      <p>Try entering this into the <strong>Username</strong> and <strong>Password</strong> fields of the Vulnerable form:</p>
+      <pre>' OR '1'='1</pre>
+    </div>
 
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -93,35 +85,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // VULNERABLE: raw concatenation WITHOUT escaping — intentionally insecure for demo
     // WARNING: this demonstrates how SQL injection works. Never use in production.
     $sql = "SELECT id, username FROM users WHERE username='" . $username . "' AND password='" . $password . "' LIMIT 1";
-        echo "<h3>Vulnerable mode</h3>";
-        echo "<p>Executed query: <code>" . h($sql) . "</code></p>";
-        $res = mysqli_query($conn, $sql);
-        if ($res && mysqli_num_rows($res) > 0) {
-            $row = mysqli_fetch_assoc($res);
-            echo "<p style='color:green'>Login successful — user: " . h($row['username']) . "</p>";
-        } else {
-            echo "<p style='color:red'>Login failed</p>";
-        }
-    } elseif ($mode === 'secure') {
-        // SECURE: use prepared statement (procedural mysqli)
-        echo "<h3>Secure mode (prepared statement)</h3>";
-        $stmt = mysqli_prepare($conn, 'SELECT id, username FROM users WHERE username = ? AND password = ? LIMIT 1');
-        if (!$stmt) {
-            echo "<p style='color:red'>Prepare failed: " . h(mysqli_error($conn)) . "</p>";
-        } else {
-            mysqli_stmt_bind_param($stmt, 'ss', $username, $password);
-            mysqli_stmt_execute($stmt);
-            $res = mysqli_stmt_get_result($stmt);
-            echo "<p>Prepared statement executed with bound parameters.</p>";
-            if ($res && mysqli_num_rows($res) > 0) {
-                $row = mysqli_fetch_assoc($res);
-                echo "<p style='color:green'>Login successful — user: " . h($row['username']) . "</p>";
-            } else {
-                echo "<p style='color:red'>Login failed</p>";
-            }
-            mysqli_stmt_close($stmt);
-        }
+    
+    echo "<div class='card'>";
+    echo "<h3 class='card-title'>Vulnerable Mode</h3>";
+    echo "<p><strong>Executed query:</strong></p>";
+    echo "<pre>" . h($sql) . "</pre>";
+    
+    $res = mysqli_query($conn, $sql);
+    if ($res && mysqli_num_rows($res) > 0) {
+      $row = mysqli_fetch_assoc($res);
+      echo "<div class='result success'>";
+      echo "<p>✓ Login successful — user: <strong>" . h($row['username']) . "</strong></p>";
+      echo "</div>";
+    } else {
+      echo "<div class='result error'>";
+      echo "<p>✗ Login failed</p>";
+      echo "</div>";
     }
+    echo "</div>";
+    
+  } elseif ($mode === 'secure') {
+    // SECURE: use prepared statement (procedural mysqli)
+    echo "<div class='card'>";
+    echo "<h3 class='card-title'>Secure Mode (Prepared Statement)</h3>";
+    
+    $stmt = mysqli_prepare($conn, 'SELECT id, username FROM users WHERE username = ? AND password = ? LIMIT 1');
+    if (!$stmt) {
+      echo "<div class='result error'>";
+      echo "<p><strong>Error:</strong> " . h(mysqli_error($conn)) . "</p>";
+      echo "</div>";
+    } else {
+      mysqli_stmt_bind_param($stmt, 'ss', $username, $password);
+      mysqli_stmt_execute($stmt);
+      $res = mysqli_stmt_get_result($stmt);
+      echo "<p><strong>Prepared statement executed with bound parameters.</strong></p>";
+      
+      if ($res && mysqli_num_rows($res) > 0) {
+        $row = mysqli_fetch_assoc($res);
+        echo "<div class='result success'>";
+        echo "<p>✓ Login successful — user: <strong>" . h($row['username']) . "</strong></p>";
+        echo "</div>";
+      } else {
+        echo "<div class='result error'>";
+        echo "<p>✗ Login failed</p>";
+        echo "</div>";
+      }
+      mysqli_stmt_close($stmt);
+    }
+    echo "</div>";
+  }
 }
 
 ?>
