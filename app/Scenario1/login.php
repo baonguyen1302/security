@@ -21,19 +21,67 @@ $password = $_POST['password'] ?? '';
     <h1>Scenario 1 — Login bypass (SQL Injection)</h1>
     <p>Use the <strong>Vulnerable</strong> form to demonstrate how concatenated SQL can be bypassed. Use the <strong>Secure</strong> form to see the prepared-statement defense.</p>
 
-    <form method="post">
-      <input type="hidden" name="mode" value="vulnerable">
-      <label>Username: <input name="username" ></label><br>
-      <label>Password: <input type="password" name="password" ></label><br>
-      <button type="submit">Login (Vulnerable)</button>
-    </form>
+    <style>
+      .card{background:#fff;border:1px solid #e6e6e6;padding:18px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.04);}
+      .form-row{margin:8px 0}
+      label{display:block;margin-bottom:6px}
+      input[type="text"], input[type="password"]{width:100%;padding:8px;border:1px solid #ccc;border-radius:6px}
+      .mode-toggle{display:flex;gap:8px;margin:6px 0 12px 0}
+      .mode-toggle label{display:inline-flex;align-items:center;gap:6px;background:#f4f6f8;padding:6px 10px;border-radius:6px;cursor:pointer}
+      .mode-toggle input{margin:0}
+      #submitBtn{background:#0078d4;color:#fff;border:none;padding:10px 14px;border-radius:6px;cursor:pointer}
+      #submitBtn.secure{background:#2d7a46}
+      .hint{font-size:13px;color:#555;margin-top:8px}
+    </style>
 
-    <form method="post">
-      <input type="hidden" name="mode" value="secure">
-      <label>Username: <input name="username" ></label><br>
-      <label>Password: <input type="password" name="password" ></label><br>
-      <button type="submit">Login (Secure - Prepared Statement)</button>
-    </form>
+    <div class="card">
+      <form method="post" id="loginForm">
+        <div class="mode-toggle">
+          <label><input type="radio" name="mode" value="vulnerable" checked> Vulnerable</label>
+          <label><input type="radio" name="mode" value="secure"> Secure (Prepared)</label>
+        </div>
+
+        <div class="form-row">
+          <label>Username
+            <input name="username" type="text" autocomplete="username" />
+          </label>
+        </div>
+
+        <div class="form-row">
+          <label>Password
+            <input type="password" name="password" autocomplete="current-password" />
+          </label>
+        </div>
+
+        <div class="form-row">
+          <button id="submitBtn" type="submit">Login (Vulnerable)</button>
+        </div>
+
+        <div class="hint" id="modeHint">Currently showing the <strong>Vulnerable</strong> login. Use this to demo SQL injection (do not use in production).</div>
+      </form>
+    </div>
+
+    <script>
+      (function(){
+        const radios = document.querySelectorAll('input[name="mode"]');
+        const btn = document.getElementById('submitBtn');
+        const hint = document.getElementById('modeHint');
+        function update(){
+          const mode = document.querySelector('input[name="mode"]:checked').value;
+          if(mode === 'vulnerable'){
+            btn.textContent = 'Login (Vulnerable)';
+            btn.classList.remove('secure');
+            hint.innerHTML = 'Currently showing the <strong>Vulnerable</strong> login. Try payload <code>\' OR \'1\'=\'1</code> in Username.';
+          } else {
+            btn.textContent = 'Login (Secure - Prepared Statement)';
+            btn.classList.add('secure');
+            hint.innerHTML = 'Secure mode uses prepared statements. This prevents SQL injection.';
+          }
+        }
+        radios.forEach(r=>r.addEventListener('change', update));
+        update();
+      })();
+    </script>
 
     <h3>Example SQLi payload</h3>
     <p>Try entering this into the <strong>Username</strong> and <strong>Password</strong> fields of the Vulnerable form:</p>
