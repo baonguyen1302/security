@@ -6,6 +6,51 @@ require_once __DIR__ . '/mode_store.php';
 
 $set = $_GET['set'] ?? null;
 $back = $_GET['back'] ?? '/';
+// Access control: only allow requests coming from the server IP (or loopback)
+// Remote IP: prefer X-Forwarded-For (first entry) then X-Real-IP then REMOTE_ADDR
+$remote = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_X_REAL_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? '';
+if (strpos($remote, ',') !== false) { $remote = trim(explode(',', $remote)[0]); }
+
+// Server IP (may be container IP); include loopback and IPv6 loopback
+$server_ip = $_SERVER['SERVER_ADDR'] ?? '127.0.0.1';
+$allowed_ips = [$server_ip, '127.0.0.1', '::1'];
+
+// Try detect Docker gateway (default route) inside container and allow it
+function detect_default_gateway_ip() {
+  $route = @file_get_contents('/proc/net/route');
+  if ($route === false) return null;
+  $lines = explode("\n", $route);
+  foreach ($lines as $line) {
+    $cols = preg_split('/\s+/', trim($line));
+    if (count($cols) >= 3 && $cols[1] === '00000000') {
+      $gwHex = $cols[2];
+      $gw = long2ip(hexdec(substr($gwHex,6,2) . substr($gwHex,4,2) . substr($gwHex,2,2) . substr($gwHex,0,2)));
+      return $gw;
+    }
+  }
+  return null;
+}
+
+$gw = detect_default_gateway_ip();
+if ($gw) { $allowed_ips[] = $gw; }
+
+// Also allow additional IPs from app/.mode_allow if present (one IP per line)
+$allow_file = __DIR__ . '/.mode_allow';
+if (is_readable($allow_file)) {
+  $lines = file($allow_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+  foreach ($lines as $ln) {
+    $ip = trim($ln);
+    if ($ip !== '') $allowed_ips[] = $ip;
+  }
+}
+
+// Normalize and check
+$allowed_ips = array_values(array_unique($allowed_ips));
+if (!in_array($remote, $allowed_ips, true)) {
+  http_response_code(403);
+  echo "<h1>403 Forbidden</h1><p>Access to mode control is restricted. Your IP (" . htmlspecialchars($remote) . ") is not allowed.</p>";
+  exit;
+}
 
 // Only accept allowed values and set server-side mode
 $allowed = ['vulnerable', 'secure'];
