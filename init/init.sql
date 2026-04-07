@@ -80,3 +80,13 @@ INSERT INTO secrets (secret_name, secret_value) VALUES
 ('api_key', 'ABC123-SECRET-KEY'),
 ('jwt_secret', 'super_secret_jwt_key'),
 ('database_backup', 'backup_2025.sql');
+
+CREATE TABLE secrets (
+id INT AUTO_INCREMENT PRIMARY KEY,
+secret_data VARCHAR(100)
+);
+
+INSERT INTO secrets(secret_data) VALUES
+('admin_password_123'),
+('db_backup_key'),
+('jwt_secret_token');
