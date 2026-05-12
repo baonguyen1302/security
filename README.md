@@ -35,9 +35,9 @@ There may also be per-scenario README files under `app/Scenario*/README.md` with
 
 ## Ports & credentials (default)
 
-- Web app (direct): http://localhost:8080
-- Web app (through WAF proxy): http://localhost:8090
-- phpMyAdmin: http://localhost:8081 (user: `root`, password: `root`)
+- Web app (direct): http://172.20.10.12:8080
+- Web app (through WAF proxy): http://172.20.10.12:8090
+- phpMyAdmin: http://172.20.10.12:8081 (user: `root`, password: `root`)
 - MySQL (inside container): root / root; database: `sqli_demo` (created from `init/init.sql`).
 
 These port mappings are from `docker-compose.yml` and may be adjusted there.
@@ -72,9 +72,9 @@ docker compose up -d
 
 Open in a browser:
 
-- App (direct): http://localhost:8080
-- App (through WAF): http://localhost:8090
-- phpMyAdmin: http://localhost:8081
+- App (direct): http://172.20.10.12:8080
+- App (through WAF): http://172.20.10.12:8090
+- phpMyAdmin: http://172.20.10.12:8081
 
 ## Short scenario guides
 
@@ -86,7 +86,7 @@ Open in a browser:
 - Scenario 2 — UNION-based SQLi
   - File: `app/Scenario2/product.php`
   - What: demonstrates how a `product_id` parameter can be abused with a UNION to leak other table columns. Also includes a parameterized/secure branch.
-  - Example (vulnerable): `http://localhost:8080/Scenario2/product.php?product_id=-1 UNION SELECT 1,username,password FROM users--`
+  - Example (vulnerable): `http://172.20.10.12:8080/Scenario2/product.php?product_id=-1 UNION SELECT 1,username,password FROM users--`
 
 - Scenario 3 — Blind (time-based) SQLi (safe simulation)
   - File: `app/Scenario3/profile.php`
@@ -95,13 +95,13 @@ Open in a browser:
   - Example: `/Scenario3/profile.php?simulate=1&probe=users|password|1|1|97` — server sleeps if first char of `users.password` for id=1 is ASCII 97.
   - Use `scripts/blind_extractor.py` to practice timed probes safely.
   - Example: 
-    + Attack:  sqlmap -u "http://localhost:8080/Scenario3/profile.php?user_id=1" --dump
-    + Defense: sqlmap -u "http://localhost:8090/Scenario3/profile.php?user_id=1" --dump
+    + Attack:  sqlmap -u "http://172.20.10.12:8080/Scenario3/profile.php?user_id=1" --dump
+    + Defense: sqlmap -u "http://172.20.10.12:8090/Scenario3/profile.php?user_id=1" --dump
 
 - Scenario 4 — OOB (DNS) SQLi
   - File: `app/Scenario4/oob.php`
   - What: Out-of-band (OOB) SQL injection demonstration using DNS exfiltration. The vulnerable page shows how an attacker can coerce the database server to perform DNS lookups to an attacker-controlled domain and embed sensitive data into the DNS query (for example: password.attacker.com).
-  - Example (vulnerable): `http://localhost:8080/Scenario4/oob.php?id=1 UNION SELECT database()--`
+  - Example (vulnerable): `http://172.20.10.12:8080/Scenario4/oob.php?id=1 UNION SELECT database()--`
   - Defense: apply Least Privilege — remove or restrict database account ability to execute system/network functions (examples: revoke or disable xp_dirtree, xp_cmdshell, LOAD_FILE, or user-defined functions that perform network requests). Also use network egress filtering to block DB server DNS requests to untrusted hosts and monitor for unusual DNS queries.
 ## Testing the WAF
 
@@ -203,9 +203,9 @@ Kho mã này là một phòng lab nhỏ để học các kỹ thuật SQL inject
 
 ## Cổng (ports) & thông tin đăng nhập mặc định
 
-- Ứng dụng (direct): http://localhost:8080
-- Ứng dụng (qua WAF): http://localhost:8090
-- phpMyAdmin: http://localhost:8081 (user: `root`, pass: `root`)
+- Ứng dụng (direct): http://172.20.10.12:8080
+- Ứng dụng (qua WAF): http://172.20.10.12:8090
+- phpMyAdmin: http://172.20.10.12:8081 (user: `root`, pass: `root`)
 - MySQL: root / root, database: `sqli_demo`.
 
 ## Chạy nhanh
@@ -238,12 +238,12 @@ docker compose down -v
   - Tệp: `app/Scenario3/profile.php`
   - API mô phỏng: `?simulate=1&probe=table|column|id|pos|ascii`
   - Example: 
-    + Attack:  sqlmap -u "http://localhost:8080/Scenario3/profile.php?user_id=1" --dump
-    + Defense: sqlmap -u "http://localhost:8090/Scenario3/profile.php?user_id=1" --dump
+    + Attack:  sqlmap -u "http://172.20.10.12:8080/Scenario3/profile.php?user_id=1" --dump
+    + Defense: sqlmap -u "http://172.20.10.12:8090/Scenario3/profile.php?user_id=1" --dump
 - Kịch bản 4 — OOB (DNS) SQLi
   - Tệp: `app/Scenario4/oob.php`
   - Nội dung: Minh họa Out-of-band (OOB) SQL injection dùng DNS để rò rỉ dữ liệu. Trang dễ bị tấn công cho thấy kẻ tấn công có thể khiến máy chủ cơ sở dữ liệu thực hiện tra cứu DNS tới tên miền do họ kiểm soát và nhúng dữ liệu nhạy cảm vào truy vấn DNS (ví dụ: password.attacker.com).
-  - Ví dụ (vulnerable): `http://localhost:8080/Scenario4/oob.php?id=1 UNION SELECT database()--`
+  - Ví dụ (vulnerable): `http://172.20.10.12:8080/Scenario4/oob.php?id=1 UNION SELECT database()--`
   - Phòng thủ: Áp dụng nguyên tắc Least Privilege — thu hồi hoặc giới hạn quyền của tài khoản DB thực hiện các hàm hệ thống/mạng (ví dụ: tắt hoặc thu hồi xp_dirtree, xp_cmdshell, LOAD_FILE, hoặc các UDF cho phép yêu cầu mạng). Bảo vệ mạng (chặn egress/DNS từ DB tới host không tin cậy) và giám sát các truy vấn DNS bất thường cũng giúp giảm rủi ro OOB exfiltration.
 ## Ghi chú bảo mật
 
